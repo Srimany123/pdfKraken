@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pdfKraken</title>
+<meta name="description" content="pdfKraken: a free PDF editor that runs in your browser. Edit text, annotate, sign, fill forms, merge, split, reorder, rotate, crop, watermark, number, redact, encrypt, compress, OCR and convert.">
+<meta name="theme-color" content="#0f766e">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="vendor/pdfjs/layers.css">
+<link rel="stylesheet" href="css/app.css">
+<script src="vendor/pdf-lib.min.js" defer></script>
+<script src="vendor/fontkit.umd.min.js" defer></script>
+<script src="vendor/jszip.min.js" defer></script>
+<script type="module" src="js/app.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="./" title="pdfKraken home">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><use href="#i-kraken"/></svg>
+    <span>pdf<b>Kraken</b></span>
+  </a>
+  <div class="group">
+    <button class="btn primary" id="btn-open" title="Open PDF or images (Ctrl+O)"><svg><use href="#i-open"/></svg><span>Open</span></button>
+    <button class="btn" id="btn-save" title="Download the edited PDF (Ctrl+S)" disabled><svg><use href="#i-save"/></svg><span>Download</span></button>
+  </div>
+  <div class="group">
+    <button class="icon" id="btn-undo" title="Undo (Ctrl+Z)" disabled><svg><use href="#i-undo"/></svg></button>
+    <button class="icon" id="btn-redo" title="Redo (Ctrl+Y)" disabled><svg><use href="#i-redo"/></svg></button>
+  </div>
+  <div class="group zoom">
+    <button class="icon" id="btn-zoom-out" title="Zoom out (Ctrl+-)"><svg><use href="#i-minus"/></svg></button>
+    <select id="zoom" title="Zoom">
+      <option value="fit">Fit width</option><option value="page">Fit page</option>
+      <option value="0.5">50%</option><option value="0.75">75%</option><option value="1">100%</option>
+      <option value="1.25">125%</option><option value="1.5">150%</option><option value="2">200%</option><option value="3">300%</option><option value="4">400%</option>
+    </select>
+    <button class="icon" id="btn-zoom-in" title="Zoom in (Ctrl+=)"><svg><use href="#i-plus"/></svg></button>
+  </div>
+  <div class="group pager">
+    <input id="page-num" type="number" min="1" value="1" aria-label="Current page"><span id="page-count">/ 0</span>
+  </div>
+  <div class="spacer"></div>
+  <div class="group">
+    <button class="btn" id="btn-tools" title="Document tools"><svg><use href="#i-grid"/></svg><span>Tools</span></button>
+    <button class="icon" id="btn-settings" title="Settings and processing server"><svg><use href="#i-gear"/></svg></button>
+    <span class="mode" id="mode" title="Where your files are processed">Browser</span>
+  </div>
+</header>
+
+<nav class="toolstrip" id="toolstrip" aria-label="Editing tools">
+  <button data-tool="browse" class="on" title="Browse: select text, click links, fill forms (B)"><svg><use href="#i-cursor-text"/></svg><span>Browse</span></button>
+  <button data-tool="select" title="Select and move objects (V)"><svg><use href="#i-cursor"/></svg><span>Select</span></button>
+  <i></i>
+  <button data-tool="text" title="Add text (T)"><svg><use href="#i-text"/></svg><span>Text</span></button>
+  <button data-tool="edittext" title="Edit existing text (E)"><svg><use href="#i-edit"/></svg><span>Edit text</span></button>
+  <button data-tool="highlight" title="Highlight (H)"><svg><use href="#i-highlight"/></svg><span>Highlight</span></button>
+  <button data-tool="ink" title="Draw freehand (D)"><svg><use href="#i-pen"/></svg><span>Draw</span></button>
+  <button data-tool="rect" title="Rectangle (R)"><svg><use href="#i-rect"/></svg><span>Box</span></button>
+  <button data-tool="ellipse" title="Ellipse (O)"><svg><use href="#i-ellipse"/></svg><span>Ellipse</span></button>
+  <button data-tool="line" title="Line (L)"><svg><use href="#i-line"/></svg><span>Line</span></button>
+  <button data-tool="arrow" title="Arrow (A)"><svg><use href="#i-arrow"/></svg><span>Arrow</span></button>
+  <i></i>
+  <button data-tool="image" title="Insert image (I)"><svg><use href="#i-image"/></svg><span>Image</span></button>
+  <button data-tool="sign" title="Signature (S)"><svg><use href="#i-sign"/></svg><span>Sign</span></button>
+  <button data-tool="stamp" title="Stamp"><svg><use href="#i-stamp"/></svg><span>Stamp</span></button>
+  <button data-tool="note" title="Sticky note comment (N)"><svg><use href="#i-note"/></svg><span>Note</span></button>
+  <i></i>
+  <button data-tool="whiteout" title="Whiteout: cover content (W)"><svg><use href="#i-eraser"/></svg><span>Whiteout</span></button>
+  <button data-tool="redact" title="Redact: permanently remove content (X)"><svg><use href="#i-redact"/></svg><span>Redact</span></button>
+  <button data-tool="crop" title="Crop page (C)"><svg><use href="#i-crop"/></svg><span>Crop</span></button>
+</nav>
+
+<div class="workspace">
+  <aside class="sidebar" id="sidebar">
+    <div class="tabs" role="tablist">
+      <button class="on" data-tab="pages">Pages</button>
+      <button data-tab="outline">Bookmarks</button>
+      <button data-tab="search">Search</button>
+    </div>
+    <section class="tab" id="tab-pages">
+      <div class="pagebar">
+        <button class="icon sm" data-pg="rotl" title="Rotate selected left"><svg><use href="#i-rotl"/></svg></button>
+        <button class="icon sm" data-pg="rotr" title="Rotate selected right"><svg><use href="#i-rotr"/></svg></button>
+        <button class="icon sm" data-pg="dup" title="Duplicate selected"><svg><use href="#i-copy"/></svg></button>
+        <button class="icon sm" data-pg="blank" title="Insert blank page after"><svg><use href="#i-page-plus"/></svg></button>
+        <button class="icon sm" data-pg="extract" title="Download selected pages as PDF"><svg><use href="#i-extract"/></svg></button>
+        <button class="icon sm danger" data-pg="del" title="Delete selected"><svg><use href="#i-trash"/></svg></button>
+      </div>
+      <p class="hint" id="pages-hint">Click to select, Ctrl/Shift-click for several, drag to reorder. Drop PDFs or images here to add them.</p>
+      <div class="thumbs" id="thumbs"></div>
+    </section>
+    <section class="tab" id="tab-outline" hidden><div id="outline" class="outline"><p class="hint">No bookmarks in this document.</p></div></section>
+    <section class="tab" id="tab-search" hidden>
+      <form id="search-form" class="searchbox">
+        <input id="search-q" type="search" placeholder="Find in document" autocomplete="off">
+        <label class="chk"><input type="checkbox" id="search-case"> Match case</label>
+      </form>
+      <div class="search-nav"><button class="btn sm" id="search-prev" type="button">Previous</button><button class="btn sm" id="search-next" type="button">Next</button><span id="search-count"></span></div>
+      <ol id="search-results" class="results"></ol>
+    </section>
+  </aside>
+
+  <main class="viewer" id="viewer" tabindex="-1">
+    <div class="empty" id="empty">
+      <div class="drop" id="drop">
+        <svg viewBox="0 0 32 32" class="big" aria-hidden="true"><use href="#i-kraken"/></svg>
+        <h1>Edit any PDF, right here.</h1>
+        <p>Drop a PDF, images<span class="srv-only"> or Office documents</span> anywhere on this page, or</p>
+        <div class="row">
+          <button class="btn primary lg" id="btn-open2">Choose files</button>
+          <button class="btn lg" id="btn-new">New blank PDF</button>
+        </div>
+        <p class="small" id="privacy-line">Files never leave your device: everything runs in this browser tab.</p>
+        <ul class="features">
+          <li>Edit &amp; add text</li><li>Highlight, draw, shapes</li><li>Sign &amp; stamp</li><li>Fill forms</li>
+          <li>Merge, split, reorder</li><li>Rotate, crop, delete</li><li>Watermark, page numbers</li><li>Redact &amp; whiteout</li>
+          <li>Password protect</li><li>Compress</li><li>OCR</li><li>PDF ⇄ images</li>
+        </ul>
+      </div>
+    </div>
+    <div class="pages" id="pages"></div>
+  </main>
+
+  <aside class="props" id="props">
+    <h2 id="props-title">Browse</h2>
+    <p class="hint" id="props-hint"></p>
+    <div id="props-body"></div>
+  </aside>
+</div>
+
+<div class="status" id="status" role="status" aria-live="polite"></div>
+<div class="busy" id="busy" hidden><div class="busy-card"><div class="spinner"></div><p id="busy-msg">Working…</p><progress id="busy-bar" max="1" value="0" hidden></progress></div></div>
+<div class="dropmask" id="dropmask" hidden><p>Drop to add files</p></div>
+
+<dialog id="dlg" class="dlg"><form method="dialog" id="dlg-form"><header><h2 id="dlg-title"></h2><button class="icon" value="cancel" formnovalidate aria-label="Close"><svg><use href="#i-x"/></svg></button></header><div id="dlg-body" class="dlg-body"></div><footer id="dlg-foot"></footer></form></dialog>
+
+<input type="file" id="file-open" accept="application/pdf,.pdf,image/*,.docx,.doc,.odt,.rtf,.txt,.xlsx,.xls,.ods,.pptx,.ppt,.odp,.html" multiple hidden>
+<input type="file" id="file-any" hidden>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-kraken" viewBox="0 0 32 32"><path fill="currentColor" d="M16 2c-5 0-8.5 3.6-8.5 8.6 0 2.7 1 4.6 2.4 6-1.7 1.1-3.3 2.5-4.6 4.6-.9 1.4-2.3 2-3.5 1.5.4 2.2 2.7 3 4.6 1.6 1.2-.9 2.1-2.4 3.2-3.4-.3 2.3-1.3 4.6-3 6.3 2.6.4 4.8-1.5 5.6-4.2.2 1.9-.3 4-1.4 5.6 2.7-.4 4.2-2.7 4.2-5.4 0 2.7 1.5 5 4.2 5.4-1.1-1.6-1.6-3.7-1.4-5.6.8 2.7 3 4.6 5.6 4.2-1.7-1.7-2.7-4-3-6.3 1.1 1 2 2.5 3.2 3.4 1.9 1.4 4.2.6 4.6-1.6-1.2.5-2.6-.1-3.5-1.5-1.3-2.1-2.9-3.5-4.6-4.6 1.4-1.4 2.4-3.3 2.4-6C24.5 5.6 21 2 16 2Zm-3.4 8.2a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2Zm6.8 0a1.6 1.6 0 1 1 0 3.2 1.6 1.6 0 0 1 0-3.2Z"/></symbol>
+    <symbol id="i-open" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 19h14"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24"><path d="m15 14 5-5-5-5m5 5H10a6 6 0 0 0 0 12h3"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></symbol>
+    <symbol id="i-cursor-text" viewBox="0 0 24 24"><path d="M9 4h6M9 20h6M12 4v16"/></symbol>
+    <symbol id="i-cursor" viewBox="0 0 24 24"><path d="m5 3 6 17 2.5-7.5L21 10Z"/></symbol>
+    <symbol id="i-text" viewBox="0 0 24 24"><path d="M5 6V4h14v2M12 4v16M9 20h6"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16Zm9-13 4 4"/></symbol>
+    <symbol id="i-highlight" viewBox="0 0 24 24"><path d="m9 11-5 5v3h6l5-5M9 11l6-6 4 4-6 6M9 11l4 4M4 21h16"/></symbol>
+    <symbol id="i-pen" viewBox="0 0 24 24"><path d="M3 17c3-1 4-7 7-7s1 6 4 6 3-5 7-5"/></symbol>
+    <symbol id="i-rect" viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="1"/></symbol>
+    <symbol id="i-ellipse" viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="8" ry="6"/></symbol>
+    <symbol id="i-line" viewBox="0 0 24 24"><path d="M5 19 19 5"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 19 19 5m0 0h-8m8 0v8"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="m21 16-5-5-9 8"/></symbol>
+    <symbol id="i-sign" viewBox="0 0 24 24"><path d="M3 18c2-6 4-10 6-10 3 0-3 10 0 10 2 0 3-4 5-4 1.5 0 1 3 2.5 3S19 15 21 15M3 21h18"/></symbol>
+    <symbol id="i-stamp" viewBox="0 0 24 24"><path d="M9 4h6l-1 7h4a2 2 0 0 1 2 2v2H4v-2a2 2 0 0 1 2-2h4ZM5 19h14"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M5 4h14v11l-5 5H5Zm9 16v-5h5"/></symbol>
+    <symbol id="i-eraser" viewBox="0 0 24 24"><path d="m7 21-4-4 10-10 7 7-7 7Zm0 0h13M9 11l7 7"/></symbol>
+    <symbol id="i-redact" viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="8" fill="currentColor"/><path d="M3 4h10M3 20h14"/></symbol>
+    <symbol id="i-crop" viewBox="0 0 24 24"><path d="M6 2v16h16M2 6h16v16"/></symbol>
+    <symbol id="i-rotl" viewBox="0 0 24 24"><path d="M3 4v6h6M3.5 10A9 9 0 1 1 6 18.5"/></symbol>
+    <symbol id="i-rotr" viewBox="0 0 24 24"><path d="M21 4v6h-6m5.5 0A9 9 0 1 0 18 18.5"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></symbol>
+    <symbol id="i-page-plus" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Zm0 0v6h6M12 12v6m-3-3h6"/></symbol>
+    <symbol id="i-extract" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Zm0 0v6h6M12 11v7m0 0-3-3m3 3 3-3"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3m-9 0 1 13h10l1-13"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  </defs>
+</svg>
+</body>
+</html>

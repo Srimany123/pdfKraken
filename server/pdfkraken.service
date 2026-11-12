@@ -1,0 +1,21 @@
+[Unit]
+Description=pdfKraken PDF editor + processing server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=pi3
+WorkingDirectory=/home/pi3/pdfkraken
+ExecStart=/usr/bin/python3 /home/pi3/pdfkraken/server/app.py
+Environment=PORT=8095
+Environment=PK_WORK=/home/pi3/pdfkraken-work
+Environment=PK_CORS=https://pdf.elvoid.com
+Environment=PK_MAX_MB=95
+Restart=always
+RestartSec=3
+Nice=5
+# LibreOffice and OCR can be memory hungry on a Pi 3
+MemoryMax=700M
+
+[Install]
+WantedBy=multi-user.target
